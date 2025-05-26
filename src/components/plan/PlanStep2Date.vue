@@ -1,194 +1,283 @@
 <template>
-    <div>
-        <!-- 선택된 날짜 표시 영역 -->
-        <div class="mb-4">
-            <v-row>
-                <v-col cols="6">
-                    <v-card variant="outlined" class="pa-4 text-center" :class="{ 'border-primary': dateRange.start }">
-                        <div class="text-subtitle-2 text-grey-600 mb-1">시작 날짜</div>
-                        <div class="text-h6" :class="dateRange.start ? 'text-primary' : 'text-grey-400'">
-                            {{ dateRange.start ? formatDate(dateRange.start) : '날짜 선택' }}
-                        </div>
-                    </v-card>
-                </v-col>
-                <v-col cols="6">
-                    <v-card variant="outlined" class="pa-4 text-center" :class="{ 'border-primary': dateRange.end }">
-                        <div class="text-subtitle-2 text-grey-600 mb-1">마지막 날짜</div>
-                        <div class="text-h6" :class="dateRange.end ? 'text-primary' : 'text-grey-400'">
-                            {{ dateRange.end ? formatDate(dateRange.end) : '날짜 선택' }}
-                        </div>
-                    </v-card>
-                </v-col>
-            </v-row>
-        </div>
+    <div class="date-step">
+      <div class="text-h6 mb-4">여행 날짜 선택</div>
+      <div class="text-body-2 text-medium-emphasis mb-6">
+        시작 날짜와 종료 날짜를 선택해주세요.
+      </div>
 
-        <!-- 날짜 선택기 (헤더 숨김) -->
-        <v-date-picker v-model="selectedDates" multiple color="primary" show-adjacent-months :min="minDate"
-            class="mb-4 custom-date-picker" @update:model-value="handleDateChange" hide-header />
-
-        <!-- 선택 상태 안내 -->
-        <div v-if="selectionStep === 1" class="text-center mb-4">
-            <v-alert type="info" variant="tonal" color="primary" class="text-body-2">
-                📅 시작 날짜를 선택하세요
-            </v-alert>
-        </div>
-        <div v-else-if="selectionStep === 2" class="text-center mb-4">
-            <v-alert type="info" variant="tonal" color="primary" class="text-body-2">
-                📅 마지막 날짜를 선택하세요
-            </v-alert>
-        </div>
-        <div v-else-if="selectionStep === 3" class="text-center mb-4">
-            <v-alert type="success" variant="tonal" color="success" class="text-body-2">
-                ✅ 날짜 선택 완료! 다른 날짜를 선택하면 처음부터 다시 선택됩니다.
-            </v-alert>
-        </div>
-
-        <!-- 초기화 버튼 -->
-        <div class="text-center mb-4" v-if="dateRange.start || dateRange.end">
-            <v-btn variant="outlined" size="small" @click="resetSelection">
-                <v-icon start>mdi-refresh</v-icon>
-                날짜 선택 초기화
-            </v-btn>
-        </div>
-
-        <div class="d-flex justify-space-between mt-4">
-            <v-btn variant="outlined" @click="$emit('back')">이전</v-btn>
-            <v-btn color="primary" :disabled="!dateRange.start || !dateRange.end" @click="nextStep">
-                다음
-            </v-btn>
-        </div>
+      <!-- 날짜 선택기 카드 -->
+      <v-card variant="outlined" class="selection-card mb-6">
+        <v-card-title class="text-subtitle-1 font-weight-medium pb-2">
+          <v-icon class="mr-2" color="primary">mdi-calendar</v-icon>
+          날짜 선택
+        </v-card-title>
+        <v-card-text class="d-flex justify-center">
+          <v-date-picker 
+            v-model="selectedDates" 
+            multiple 
+            color="primary" 
+            show-adjacent-months 
+            :min="minDate"
+            class="custom-date-picker" 
+            @update:model-value="handleDateSelect" 
+            hide-header 
+          />
+        </v-card-text>
+      </v-card>
+  
+      <!-- 선택 상태 안내 -->
+      <v-expand-transition>
+        <v-card 
+          v-if="selectionStep < 3" 
+          variant="tonal" 
+          color="info" 
+          class="mb-6 selection-guide"
+        >
+          <v-card-text class="py-3">
+            <div class="d-flex align-center">
+              <v-icon color="info" class="mr-3">mdi-information-outline</v-icon>
+              <div class="text-body-2">
+                <span v-if="selectionStep === 1">📅 시작 날짜를 선택하세요</span>
+                <span v-else-if="selectionStep === 2">📅 종료 날짜를 선택하세요</span>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-expand-transition>
+  
+      <!-- 선택 완료 미리보기 -->
+      <v-expand-transition>
+        <v-card 
+          v-if="dateRange.start && dateRange.end" 
+          variant="tonal" 
+          color="success" 
+          class="mb-6 selection-preview"
+        >
+          <v-card-text class="py-4">
+            <div class="d-flex align-center">
+              <v-icon color="success" class="mr-3">mdi-calendar-check</v-icon>
+              <div>
+                <div class="text-subtitle-2 font-weight-medium">선택된 여행 기간</div>
+                <div class="text-h6 font-weight-bold mt-1">
+                  {{ getTravelPeriodText() }}
+                </div>
+                <div class="text-caption text-medium-emphasis mt-1">
+                  총 {{ getTravelDays() }}일 여행
+                </div>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-expand-transition>
     </div>
-</template>
-
-<script setup>
-import { ref, nextTick } from 'vue'
-
-const props = defineProps({
-    dates: {
-        type: Object,
-        default: () => ({ start: '', end: '' })
+  </template>
+  
+  <script setup>
+  import { ref, nextTick, watch } from 'vue'
+  
+  const props = defineProps({
+    data: {
+      type: Object,
+      default: () => ({})
     }
-})
-
-const emit = defineEmits(['next', 'back'])
-
-const today = new Date().toISOString().slice(0, 10)
-const minDate = today
-
-// 선택된 날짜들을 배열로 관리
-const selectedDates = ref([])
-
-// 시작일과 종료일을 관리하는 객체
-const dateRange = ref({
-    start: props.dates?.start || '',
-    end: props.dates?.end || ''
-})
-
-// 선택 단계 (1: 시작일 선택, 2: 종료일 선택, 3: 완료)
-const selectionStep = ref(1)
-
-// props에서 초기값 설정
-if (props.dates?.start && props.dates?.end) {
-    selectedDates.value = [props.dates.start, props.dates.end]
+  })
+  
+  const emit = defineEmits(['update'])
+  
+  const today = new Date().toISOString().slice(0, 10)
+  const minDate = today
+  
+  // 선택된 날짜들을 배열로 관리
+  const selectedDates = ref([])
+  
+  // 시작일과 종료일을 관리하는 객체
+  const dateRange = ref({
+    start: props.data?.start || '',
+    end: props.data?.end || ''
+  })
+  
+  // 선택 단계 (1: 시작일 선택, 2: 종료일 선택, 3: 완료)
+  const selectionStep = ref(1)
+  
+  // props에서 초기값 설정
+  if (props.data?.start && props.data?.end) {
+    selectedDates.value = [props.data.start, props.data.end]
     selectionStep.value = 3
-}
-
-// 날짜 변경 핸들러 - 날짜 정렬 명확하게 처리
-async function handleDateChange(dates) {
+  }
+  
+  // 여행 기간 텍스트
+  const getTravelPeriodText = () => {
+    if (!dateRange.value.start || !dateRange.value.end) return ''
+    return `${formatDate(dateRange.value.start)} ~ ${formatDate(dateRange.value.end)}`
+  }
+  
+  // 여행 일수 계산
+  const getTravelDays = () => {
+    if (!dateRange.value.start || !dateRange.value.end) return 0
+    const start = new Date(dateRange.value.start)
+    const end = new Date(dateRange.value.end)
+    const diffTime = Math.abs(end - start)
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays + 1
+  }
+  
+  // 데이터 업데이트 함수
+  function updateData() {
+    console.log('Step2 updateData called:', { start: dateRange.value.start, end: dateRange.value.end })
+    
+    if (dateRange.value.start && dateRange.value.end) {
+      const dateData = {
+        start: dateRange.value.start,
+        end: dateRange.value.end
+      }
+      console.log('Step2 emitting date data:', dateData)
+      emit('update', dateData)
+    } else {
+      console.log('Step2 emitting empty data')
+      emit('update', {})
+    }
+  }
+  
+  // 직접 날짜 변경 핸들러
+  function handleDateSelect(dates) {
+    console.log('Direct date select:', dates)
+    handleDateChange(dates)
+  }
+  
+  // 날짜 변경 핸들러
+  async function handleDateChange(dates) {
     if (!dates || dates.length === 0) {
-        dateRange.value = { start: '', end: '' }
-        selectionStep.value = 1
-        return
+      dateRange.value = { start: '', end: '' }
+      selectionStep.value = 1
+      updateData()
+      return
     }
-
-    const sortedDates = [...dates].sort((a, b) => new Date(a) - new Date(b)) // ✅ 날짜 기준 정렬
-
+  
+    const sortedDates = [...dates].sort((a, b) => new Date(a) - new Date(b))
+  
     if (selectionStep.value === 3 && dates.length >= 3) {
-        const previousDates = selectedDates.value
-        const newDate = dates.find(date => !previousDates.includes(date))
-        if (newDate) {
-            selectedDates.value = []
-            await nextTick()
-            selectedDates.value = [newDate]
-            dateRange.value = { start: newDate, end: '' }
-            selectionStep.value = 2
-            return
-        }
-    }
-
-    if (sortedDates.length === 1) {
-        dateRange.value = {
-            start: sortedDates[0],
-            end: ''
-        }
+      const previousDates = selectedDates.value
+      const newDate = dates.find(date => !previousDates.includes(date))
+      if (newDate) {
+        selectedDates.value = []
+        await nextTick()
+        selectedDates.value = [newDate]
+        dateRange.value = { start: newDate, end: '' }
         selectionStep.value = 2
-    } else if (sortedDates.length === 2) {
-        dateRange.value = {
-            start: sortedDates[0],
-            end: sortedDates[1]
-        }
-        selectionStep.value = 3
-    } else if (sortedDates.length > 2) {
-        selectedDates.value = [sortedDates[0], sortedDates[1]]
-        dateRange.value = {
-            start: sortedDates[0],
-            end: sortedDates[1]
-        }
-        selectionStep.value = 3
+        updateData()
+        return
+      }
     }
-}
-
-
-// 선택 초기화
-function resetSelection() {
-    selectedDates.value = []
-    dateRange.value = { start: '', end: '' }
-    selectionStep.value = 1
-}
-
-// 날짜 포맷팅
-function formatDate(dateString) {
+  
+    if (sortedDates.length === 1) {
+      dateRange.value = {
+        start: sortedDates[0],
+        end: ''
+      }
+      selectionStep.value = 2
+    } else if (sortedDates.length === 2) {
+      dateRange.value = {
+        start: sortedDates[0],
+        end: sortedDates[1]
+      }
+      selectionStep.value = 3
+    } else if (sortedDates.length > 2) {
+      selectedDates.value = [sortedDates[0], sortedDates[1]]
+      dateRange.value = {
+        start: sortedDates[0],
+        end: sortedDates[1]
+      }
+      selectionStep.value = 3
+    }
+    
+    updateData()
+  }
+  
+  // 날짜 포맷팅
+  function formatDate(dateString) {
     if (!dateString) return ''
     const date = new Date(dateString)
     return date.toLocaleDateString('ko-KR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        weekday: 'short'
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     })
-}
-
-// 다음 단계로
-function nextStep() {
-    if (dateRange.value.start && dateRange.value.end) {
-        emit('next', {
-            start: dateRange.value.start,
-            end: dateRange.value.end
-        })
+  }
+  
+  // 요일 가져오기
+  function getDayOfWeek(dateString) {
+    if (!dateString) return ''
+    const date = new Date(dateString)
+    return date.toLocaleDateString('ko-KR', { weekday: 'long' })
+  }
+  
+  // props 변경 감시
+  watch(() => props.data, (newData) => {
+    if (newData && newData.start && newData.end) {
+      dateRange.value = { start: newData.start, end: newData.end }
+      selectedDates.value = [newData.start, newData.end]
+      selectionStep.value = 3
     }
-}
-</script>
-
-<style scoped>
-/* 날짜 선택기 헤더 숨김 */
-.custom-date-picker :deep(.v-date-picker-header) {
-    display: none;
-}
-
-/* 카드 보더 강조 */
-.border-primary {
+  }, { deep: true })
+  </script>
+  
+  <style scoped>
+  .date-step {
+    max-width: 100%;
+  }
+  
+  .selection-card {
+    height: 100%;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+  }
+  
+  .selection-card:hover {
+    border-color: rgb(var(--v-theme-primary));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.15);
+  }
+  
+  .date-display-card {
+    min-height: 120px;
+  }
+  
+  .custom-date-picker {
+    box-shadow: none;
+    width: 100%;
+    max-width: 400px;
+  }
+  
+  .custom-date-picker :deep(.v-date-picker) {
+    box-shadow: none;
+    border: none;
+    width: 100%;
+    margin: 0 auto;
+  }
+  
+  .selection-guide {
+    border: 2px solid rgb(var(--v-theme-info));
+    animation: fadeInUp 0.3s ease;
+  }
+  
+  .selection-preview {
+    border: 2px solid rgb(var(--v-theme-success));
+    animation: fadeInUp 0.3s ease;
+  }
+  
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* 커스텀 스크롤바 */
+  :deep(.v-field--focused) {
     border-color: rgb(var(--v-theme-primary)) !important;
-    border-width: 2px !important;
-}
-
-/* 날짜 선택기 스타일 개선 */
-.custom-date-picker {
-    box-shadow: none;
-}
-
-.custom-date-picker :deep(.v-date-picker) {
-    box-shadow: none;
-    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-    border-radius: 8px;
-}
-</style>
+  }
+  </style>

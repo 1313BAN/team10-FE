@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://70.12.60.65:8080/api', // 백엔드 주소
+  baseURL: 'http://localhost:8080/api', // 백엔드 주소
   withCredentials: true,               // 세션 쿠키를 보내기 위해 필요
 });
 

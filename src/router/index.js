@@ -4,6 +4,7 @@ import PlanCreateView from '../views/PlanCreateView.vue'
 import LoginView from '@/views/user/LoginView.vue'
 import RegisterView from '@/views/user/RegisterView.vue'
 import MyPageView from '@/views/user/MyPageView.vue'
+import ScheduleView from '@/views/ScheduleView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -32,6 +33,17 @@ const router = createRouter({
       path: '/mypage',
       name: 'MyPage',
       component: MyPageView
+    },
+    {
+      path: '/schedule/:id',
+      name: 'ScheduleView',
+      component: ScheduleView,
+      props: true
+    },
+    {
+      path: '/schedule',
+      name: 'NewScheduleView',
+      component: ScheduleView
     }
   ],
 })

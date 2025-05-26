@@ -1,25 +1,30 @@
 import axios from 'axios';
 
-const api = axios.create({
-    baseURL: 'http://localhost:8080/api', // 백엔드 주소
-  });
+const API_URL = process.env.VUE_APP_API_URL || 'http://localhost:8080/api';
 
-// 일정 저장
-export function createPlan(planData) {
-    return api.post('/plans', planData)
-}
-  
-// 일정 조회
-export function getPlan(planId) {
-    return api.get(`/plans/${planId}`)
-}
-  
-// 일정 수정
-export function updatePlan(planId, planData) {
-    return api.put(`/plans/${planId}`, planData)
-}
-  
-// 일정 삭제
-export function deletePlan(planId) {
-    return api.delete(`/plans/${planId}`)
-}
+export const planService = {
+  // 여행 계획 생성
+  createPlan(planData) {
+    return axios.post(`${API_URL}/plans`, planData);
+  },
+
+  // 여행 계획 수정
+  updatePlan(planId, planData) {
+    return axios.put(`${API_URL}/plans/${planId}`, planData);
+  },
+
+  // 여행 계획 삭제
+  deletePlan(planId) {
+    return axios.delete(`${API_URL}/plans/${planId}`);
+  },
+
+  // 여행 계획 상세 조회
+  getPlan(planId) {
+    return axios.get(`${API_URL}/plans/${planId}`);
+  },
+
+  // 여행 계획 목록 조회
+  getPlans(params) {
+    return axios.get(`${API_URL}/plans`, { params });
+  }
+};
